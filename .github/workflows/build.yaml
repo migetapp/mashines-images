@@ -34,6 +34,9 @@ jobs:
             {"dir": "almalinux9",     "image": "mashine-almalinux",     "version": "9"},
             {"dir": "centosstream10", "image": "mashine-centos-stream", "version": "10"},
             {"dir": "centosstream9",  "image": "mashine-centos-stream", "version": "9"},
+            {"dir": "rockylinux10",   "image": "mashine-rockylinux",    "version": "10"},
+            {"dir": "rockylinux9",    "image": "mashine-rockylinux",    "version": "9"},
+            {"dir": "rockylinux8",    "image": "mashine-rockylinux",    "version": "8"},
             {"dir": "ubuntu2404",     "image": "mashine-ubuntu",        "version": "24.04"}
           ]'
           matrix=$(jq -c --arg only "$ONLY" \
