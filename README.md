@@ -64,8 +64,18 @@ generated at build time would be the same key on every machine — and, in a
 published image, one anyone can read.
 
 An image that installs an SSH server must therefore ship no host keys and leave
-generating them to first boot. `almalinux9/Dockerfile` does this by deleting any
-key the package brought and letting `sshd-keygen@.service` make them.
+generating them to first boot. How much work that is depends on the distro, and
+it is worth knowing which one you are adding:
+
+- **AlmaLinux** ships no keys and generates them on first start from
+  `sshd-keygen@.service`. Deleting them is a guard, not a fix.
+- **Ubuntu** generates them in `openssh-server`'s postinst, so they exist the
+  moment the package installs, and it has no first-boot equivalent — its cloud
+  images leave the job to cloud-init. `ubuntu2404/` deletes them **in the layer
+  that installed the package**, because a published image carries every layer it
+  was built from, and puts a `ssh-keygen -A` in front of `ssh.service` instead.
+
+Check a new image with `ls /etc/ssh/ssh_host_*`, and check the layers too.
 
 ## Licence
 
