@@ -67,15 +67,32 @@ An image that installs an SSH server must therefore ship no host keys and leave
 generating them to first boot. How much work that is depends on the distro, and
 it is worth knowing which one you are adding:
 
-- **AlmaLinux** ships no keys and generates them on first start from
-  `sshd-keygen@.service`. Deleting them is a guard, not a fix.
-- **Ubuntu** generates them in `openssh-server`'s postinst, so they exist the
-  moment the package installs, and it has no first-boot equivalent — its cloud
-  images leave the job to cloud-init. `ubuntu2404/` deletes them **in the layer
+- **The RHEL family** — AlmaLinux, CentOS Stream, Rocky, Fedora — ships no keys
+  and generates them on first start from `sshd-keygen@.service`. Deleting them
+  is a guard, not a fix.
+- **Debian and Ubuntu** generate them in `openssh-server`'s postinst, so they
+  exist the moment the package installs. Those images delete them **in the layer
   that installed the package**, because a published image carries every layer it
-  was built from, and puts a `ssh-keygen -A` in front of `ssh.service` instead.
+  was built from, and put a `ssh-keygen -A` in front of `ssh.service` instead
+  (`sshd-keygen.conf`). Debian 13 does ship an `sshd-keygen.service`, and it is
+  not a substitute: it is `ConditionFirstBoot=yes`, and installing systemd
+  writes `/etc/machine-id` during the build, so the condition is already unmet
+  by the time a machine boots.
 
 Check a new image with `ls /etc/ssh/ssh_host_*`, and check the layers too.
+
+## What the bases disagree about
+
+- **What a base already carries is the vendor's decision, not the release's.**
+  `almalinux:9` and `centos:stream10` ship a systemd and a set of pre-masked
+  units; `centos:stream9`, `rockylinux:9` and `rockylinux:10` ship neither, and
+  `rockylinux:8` ships both. Check each base rather than copying a list.
+- **EL8's `sshd_config` has no `Include` line and no `sshd_config.d`**, so the
+  drop-in every other image relies on would be read by nothing — while that
+  `sshd_config` ships an uncommented `PermitRootLogin yes`. `rockylinux8/` adds
+  the `Include` as line 1. Confirm any new image with `sshd -T`.
+- **A systemd installed by us defaults to `graphical.target`.** Only the bases
+  that ship their own have already moved it to `multi-user`.
 
 ## Licence
 
