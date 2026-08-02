@@ -1,0 +1,69 @@
+#!/bin/sh
+# Copyright (c) 2026 Miget
+#
+# SPDX-License-Identifier: MIT
+#
+# PID 1 for a machine whose guest runs systemd. It installs the SSH keys, forks
+# a journal follower, and execs systemd.
+#
+# The follower is why this exists. systemd points PID 1's stdin, stdout and
+# stderr at /dev/null while it starts, and in a guest with no /dev/console it
+# reopens nothing: open_terminal() refuses anything that is not a tty, so a pipe
+# will not do. That descriptor is the machine's only connection to its log
+# stream, so unless another process is holding a copy of it before systemd
+# starts, the log is empty for the machine's whole life.
+#
+# The exec is load-bearing too. Outside the guest, PID 1 is identified by what
+# it is -- a stop signal becomes systemd's SIGRTMIN+3 only if PID 1 really is
+# systemd -- so a wrapper that stayed resident would leave the machine unable to
+# shut down.
+set -u
+
+# MACHINE_SSH_KEYS, newline-separated.
+#
+# It has to be read here, in PID 1. A systemd service is started with a clean
+# environment rather than the one the guest was given, and the /proc/1/environ
+# workaround mashine-volumes uses cannot carry newlines: `tr '\0' '\n'` makes an
+# embedded newline indistinguishable from the separator between variables.
+#
+# sshd ignores an authorized_keys file that is group- or world-writable, or one
+# under a directory that is, and it does so silently -- the client only sees
+# "Permission denied (publickey)". Hence the umask, set before the file exists
+# rather than fixed afterwards. Written to a temporary name and renamed so an
+# sshd reading concurrently sees one set of keys or the other, never half a key.
+#
+# Unset leaves the guest's own file alone. This rootfs is durable and its root
+# may have added keys by hand.
+if [ -n "${MACHINE_SSH_KEYS:-}" ]; then
+	(
+		umask 0077
+		mkdir -p /root/.ssh &&
+			chmod 0700 /root/.ssh &&
+			printf '%s\n' "${MACHINE_SSH_KEYS}" >/root/.ssh/authorized_keys.new &&
+			mv /root/.ssh/authorized_keys.new /root/.ssh/authorized_keys
+	) || echo "mashine-init: failed to install ssh authorized keys" >&2
+fi
+
+# `journalctl --follow` started before journald has a journal file watches
+# nothing and never recovers -- not "starts late", never. So wait for the file.
+#
+# stdbuf is not tidiness: writing to a pipe, journalctl buffers a whole block,
+# so the log stays empty until 4 KiB accumulate and then arrives at once.
+#
+# --lines=all because the boot that already happened is worth reading, and a
+# loop because a follower that dies must not take the log stream with it.
+(
+	n=0
+	while [ "${n}" -lt 600 ]; do
+		set -- /run/log/journal/*/*.journal /var/log/journal/*/*.journal
+		[ -f "$1" ] && break
+		n=$((n + 1))
+		sleep 0.1
+	done
+	while :; do
+		/usr/bin/stdbuf -oL /usr/bin/journalctl --follow --lines=all --output=short-iso --no-pager 2>/dev/null
+		sleep 2
+	done
+) &
+
+exec /usr/lib/systemd/systemd "$@"
