@@ -19,6 +19,10 @@ docker build -f almalinux9/Dockerfile -t mashine-almalinux:9 .
 
 Nothing outside this repository and the distro's own package mirrors is needed.
 
+The build upgrades the distro's packages, so what lands in the image depends on
+when it was built and not only on the base digest the Dockerfile pins. A rebuild
+is a new revision, never a republished one.
+
 ## Publish
 
 `.github/workflows/build.yaml` is run by hand and pushes

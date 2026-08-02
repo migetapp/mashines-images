@@ -12,6 +12,17 @@
 # (a CVE, a new minor) looks like.
 FROM almalinux:9@sha256:d2515c769e7b73f95c4fde38c0a505336ff38f14990c0b7253b77060a049a743
 
+# A machine is a box someone logs into, and the base image is built for
+# containers: no ps, no ip, no editor but vi. curl is already here as
+# curl-minimal -- installing curl over it is a conflict, not an upgrade.
+#
+# Upgrading means the pinned digest no longer decides what ends up in the
+# image: two builds weeks apart differ. Publish a rebuild as a new revision.
+RUN dnf -y upgrade \
+	&& dnf -y install procps-ng iproute iputils less tar gzip vim-minimal nano \
+	&& dnf clean all \
+	&& rm -rf /var/cache/dnf
+
 # The stock image has mount, blkid and mountpoint but none of mkfs.ext4,
 # e2fsck or resize2fs, and mashine-volumes needs all three.
 RUN dnf -y install e2fsprogs \
