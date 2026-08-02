@@ -1,0 +1,26 @@
+# Copyright (c) 2026 Miget
+#
+# SPDX-License-Identifier: MIT
+#
+# A failed mount leaves this unit failed and the system degraded rather than
+# killing the boot: the machine is still reachable, so an operator can log in
+# and read why, instead of watching it restart-loop over a transient device
+# error.
+
+[Unit]
+Description=Format and mount mashines.dev attached volumes
+Documentation=https://github.com/migetapp/mashines-images
+After=local-fs.target
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/mashine-volumes
+# Also to the console, so what happened to an attached disk shows up in the
+# machine's log without having to exec in and read the journal.
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

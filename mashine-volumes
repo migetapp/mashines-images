@@ -1,0 +1,100 @@
+#!/bin/sh
+# Copyright (c) 2026 Miget
+#
+# SPDX-License-Identifier: MIT
+#
+# Format and mount the disks attached to this machine.
+#
+# MACHINE_VOLUMES is a comma-separated list of "<device>:<mountpoint>". The
+# devices arrive raw and unformatted, so the guest owns the filesystem as well
+# as the mount.
+#
+# It is read from PID 1's environment, not this process's: systemd builds a
+# clean environment for the services it starts, so a unit cannot see what the
+# guest was given.
+
+set -u
+
+spec=$(tr '\0' '\n' </proc/1/environ | sed -n 's/^MACHINE_VOLUMES=//p')
+if [ -z "${spec}" ]; then
+	echo "no volumes attached"
+	exit 0
+fi
+
+# Split in this shell rather than piping into `while read`, which would run the
+# loop in a subshell and make an exit inside it exit only the subshell.
+oldifs=$IFS
+IFS=,
+# shellcheck disable=SC2086 # deliberate: word-split the comma-separated spec
+set -- $spec
+IFS=$oldifs
+
+rc=0
+for entry in "$@"; do
+	case ${entry} in
+	*:*) ;;
+	*)
+		echo "ignoring malformed volume entry ${entry}: expected <device>:<mountpoint>"
+		rc=1
+		continue
+		;;
+	esac
+	dev=${entry%%:*}
+	mnt=${entry#*:}
+	if [ -z "${dev}" ] || [ -z "${mnt}" ]; then
+		echo "ignoring malformed volume entry ${entry}: expected <device>:<mountpoint>"
+		rc=1
+		continue
+	fi
+
+	echo "preparing ${dev} at ${mnt}"
+
+	if mountpoint -q "${mnt}" 2>/dev/null; then
+		echo "  ${mnt} is already a mount point, nothing to do"
+		continue
+	fi
+
+	if [ ! -b "${dev}" ]; then
+		echo "  ${dev} is not a block device; refusing to mount ${mnt}"
+		rc=1
+		continue
+	fi
+
+	# mkfs ONLY when blkid finds no filesystem. Reformatting on every boot
+	# would silently erase the disk that was attached to keep data.
+	if ! blkid "${dev}" | grep -q TYPE; then
+		echo "  ${dev} has no filesystem, creating one"
+		if ! mkfs.ext4 -q "${dev}"; then
+			echo "  mkfs.ext4 on ${dev} failed; refusing to mount ${mnt}"
+			rc=1
+			continue
+		fi
+	fi
+
+	# e2fsck before resize2fs: resize2fs refuses a filesystem whose last check
+	# predates its last mount. rc 1 ("errors corrected") and 2 ("corrected,
+	# reboot advised") are success; 4 and above left errors uncorrected.
+	e2fsck -p -f "${dev}"
+	fsck_rc=$?
+	if [ "${fsck_rc}" -ge 4 ]; then
+		echo "  e2fsck on ${dev} left errors uncorrected (rc=${fsck_rc}); refusing to mount ${mnt}"
+		rc=1
+		continue
+	fi
+
+	# A disk grown from outside the guest is picked up here.
+	resize2fs "${dev}" >/dev/null 2>&1 || true
+
+	if ! mkdir -p "${mnt}"; then
+		rc=1
+		continue
+	fi
+	if ! mount -t ext4 "${dev}" "${mnt}"; then
+		echo "  mounting ${dev} at ${mnt} failed"
+		rc=1
+		continue
+	fi
+	echo "  mounted ${dev} at ${mnt}"
+done
+
+exit "${rc}"
