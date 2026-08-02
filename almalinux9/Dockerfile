@@ -13,22 +13,16 @@
 FROM almalinux:9@sha256:d2515c769e7b73f95c4fde38c0a505336ff38f14990c0b7253b77060a049a743
 
 # A machine is a box someone logs into, and the base image is built for
-# containers: no ps, no ip, no editor but vi. curl is already here as
-# curl-minimal -- installing curl over it is a conflict, not an upgrade.
+# containers: no ps, no ip, no editor but vi, and none of mkfs.ext4, e2fsck or
+# resize2fs that mashine-volumes needs. curl is already here as curl-minimal --
+# installing curl over it is a conflict, not an upgrade.
+#
+# One transaction: dnf downloads repo metadata per invocation, and a clean in a
+# later layer does not shrink an earlier one.
 #
 # Upgrading means the pinned digest no longer decides what ends up in the
 # image: two builds weeks apart differ. Publish a rebuild as a new revision.
-RUN dnf -y upgrade \
-	&& dnf -y install procps-ng iproute iputils less tar gzip vim-minimal nano \
-	&& dnf clean all \
-	&& rm -rf /var/cache/dnf
-
-# The stock image has mount, blkid and mountpoint but none of mkfs.ext4,
-# e2fsck or resize2fs, and mashine-volumes needs all three.
-RUN dnf -y install e2fsprogs \
-	&& dnf clean all \
-	&& rm -rf /var/cache/dnf
-
+#
 # NO HOST KEYS ARE BAKED HERE, and none ever may be. Every machine starts from
 # a copy of this filesystem, so a key generated at build time would be the same
 # key on all of them -- one machine's operator could impersonate every other --
@@ -40,7 +34,11 @@ RUN dnf -y install e2fsprogs \
 # runs After) generates them on first start, onto the machine's own durable
 # disk. The rm is a guard on that invariant rather than a fix: it makes a future
 # package that DID bake a key fail loudly instead of shipping it everywhere.
-RUN dnf -y install openssh-server \
+RUN dnf -y upgrade \
+	&& dnf -y install \
+		procps-ng iproute iputils less tar gzip vim-minimal nano \
+		e2fsprogs \
+		openssh-server \
 	&& dnf clean all \
 	&& rm -rf /var/cache/dnf \
 	&& rm -f /etc/ssh/ssh_host_* \
