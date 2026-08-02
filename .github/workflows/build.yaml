@@ -37,6 +37,8 @@ jobs:
             {"dir": "rockylinux10",   "image": "mashine-rockylinux",    "version": "10"},
             {"dir": "rockylinux9",    "image": "mashine-rockylinux",    "version": "9"},
             {"dir": "rockylinux8",    "image": "mashine-rockylinux",    "version": "8"},
+            {"dir": "fedora44",       "image": "mashine-fedora",        "version": "44"},
+            {"dir": "fedora43",       "image": "mashine-fedora",        "version": "43"},
             {"dir": "ubuntu2404",     "image": "mashine-ubuntu",        "version": "24.04"}
           ]'
           matrix=$(jq -c --arg only "$ONLY" \
