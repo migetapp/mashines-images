@@ -31,8 +31,10 @@ jobs:
           ONLY: ${{ inputs.image }}
         run: |
           catalogue='[
-            {"dir": "almalinux9", "image": "mashine-almalinux", "version": "9"},
-            {"dir": "ubuntu2404", "image": "mashine-ubuntu", "version": "24.04"}
+            {"dir": "almalinux9",     "image": "mashine-almalinux",     "version": "9"},
+            {"dir": "centosstream10", "image": "mashine-centos-stream", "version": "10"},
+            {"dir": "centosstream9",  "image": "mashine-centos-stream", "version": "9"},
+            {"dir": "ubuntu2404",     "image": "mashine-ubuntu",        "version": "24.04"}
           ]'
           matrix=$(jq -c --arg only "$ONLY" \
             'if $only == "all" then . else map(select(.dir == $only)) end' <<<"$catalogue")
