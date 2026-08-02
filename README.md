@@ -43,7 +43,10 @@ them as root's `authorized_keys` before sshd starts.
 
 **`MACHINE_VOLUMES`** — attached disks, **comma**-separated `<device>:<mountpoint>`
 pairs. The devices arrive raw and unformatted; the guest owns the filesystem as
-well as the mount.
+well as the mount. mashines.dev still sends this one under its older name,
+`MIGET_MACHINE_VOLUMES`, so `mashine-volumes` reads that too and prefers the
+name above. An image that reads only `MACHINE_VOLUMES` today will boot and
+mount nothing.
 
 The separators differ on purpose: an SSH key's option list can contain commas.
 

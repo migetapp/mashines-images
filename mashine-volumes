@@ -15,7 +15,14 @@
 
 set -u
 
+# MIGET_MACHINE_VOLUMES is the name mashines.dev sends today. MACHINE_VOLUMES is
+# the name in the contract above, and the two have to overlap for a while: the
+# old one is also read by the entrypoint of every container-os base, so it
+# cannot be renamed on the sending side without silently un-mounting the disks
+# of every machine already running one. Read the documented name first so a
+# sender that has moved wins, and drop this once none is left behind.
 spec=$(tr '\0' '\n' </proc/1/environ | sed -n 's/^MACHINE_VOLUMES=//p')
+[ -n "${spec}" ] || spec=$(tr '\0' '\n' </proc/1/environ | sed -n 's/^MIGET_MACHINE_VOLUMES=//p')
 if [ -z "${spec}" ]; then
 	echo "no volumes attached"
 	exit 0
