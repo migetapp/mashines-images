@@ -32,12 +32,19 @@ RUN chmod 0755 /usr/local/sbin/mashine-volumes \
 COPY mashine-init /usr/local/sbin/mashine-init
 RUN chmod 0755 /usr/local/sbin/mashine-init
 
-# No console, no screen, no hardware of its own.
+# No console, no screen, no hardware of its own -- and no kernel modules: the
+# guest has no /lib/modules, so libkmod cannot even initialise and
+# systemd-modules-load can only fail. It is masked here and not on the
+# RHEL-family images because Debian ships a dangling
+# /etc/modules-load.d/modules.conf, which is enough to satisfy the unit's
+# ConditionDirectoryNotEmpty; on EL that directory is empty and the unit is
+# skipped instead. Without this the machine boots degraded.
 RUN systemctl mask \
 		systemd-firstboot.service \
 		getty.target \
 		console-getty.service \
 		systemd-remount-fs.service \
+		systemd-modules-load.service \
 		dev-hugepages.mount \
 		sys-fs-fuse-connections.mount \
 	&& systemctl set-default multi-user.target
