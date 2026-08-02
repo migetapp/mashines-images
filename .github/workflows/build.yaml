@@ -19,7 +19,7 @@ on:
 
 jobs:
   select:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.pick.outputs.matrix }}
     steps:
@@ -44,7 +44,7 @@ jobs:
   build:
     needs: select
     name: ${{ matrix.image }}:${{ matrix.version }}-${{ inputs.revision }}
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
