@@ -1,0 +1,90 @@
+name: "Build machine image"
+
+# Manual on purpose. A machine image is published under a version that never
+# moves -- a rebuild produces a new one rather than replacing an old one -- so
+# building on every push would manufacture versions nobody asked for. It also
+# means a pull request from a fork cannot start a build.
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'Image directory to build, or "all"'
+        required: true
+        default: all
+        type: string
+      revision:
+        description: "Revision to publish, e.g. v1. Never reuse one."
+        required: true
+        type: string
+
+jobs:
+  select:
+    runs-on: self-hosted
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      # The catalogue. Written out rather than derived from the directory name,
+      # because the two do not agree everywhere: a distro that carries a dot in
+      # its version drops it from the directory and keeps it in the tag.
+      - id: pick
+        env:
+          ONLY: ${{ inputs.image }}
+        run: |
+          catalogue='[
+            {"dir": "almalinux9", "image": "machine-almalinux", "version": "9"}
+          ]'
+          matrix=$(jq -c --arg only "$ONLY" \
+            'if $only == "all" then . else map(select(.dir == $only)) end' <<<"$catalogue")
+          if [ "$matrix" = "[]" ]; then
+            echo "no image directory named $ONLY" >&2
+            exit 1
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: select
+    name: ${{ matrix.image }}:${{ matrix.version }}-${{ inputs.revision }}
+    runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.select.outputs.matrix) }}
+    env:
+      REF: docker.io/miget/${{ matrix.image }}:${{ matrix.version }}-${{ inputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      # Credentials through env:, never inline ${{ }}: an expression is pasted
+      # into the script text before the shell parses it, so a $ or a backtick in
+      # a token gets expanded instead of sent.
+      - name: Log in to Docker Hub
+        env:
+          USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: printf '%s' "$TOKEN" | docker login docker.io -u "$USERNAME" --password-stdin
+
+      # --provenance=false --sbom=false: with them the tag resolves to a
+      # manifest list carrying an attestation manifest beside the image, and
+      # what pulls this should get exactly the filesystem the digest names.
+      - name: Build and push
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=false --sbom=false \
+            -f "${{ matrix.dir }}/Dockerfile" \
+            -t "$REF" \
+            --push .
+
+      # The digest, not the tag: a tag can move, and a host can serve a stale
+      # one out of its cache.
+      - name: Print the digest
+        run: |
+          docker buildx imagetools inspect "$REF" --format '{{.Manifest.Digest}}' \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      # The runner outlives the job, and a login left behind is a push token
+      # sitting in its docker config for whatever runs next.
+      - name: Log out
+        if: always()
+        run: docker logout docker.io
