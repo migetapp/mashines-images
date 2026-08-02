@@ -20,7 +20,7 @@ COPY sshd-mashine.conf /etc/ssh/sshd_config.d/10-mashine.conf
 # Ubuntu has no sshd-keygen@.service; cloud-init does it there, and a machine
 # does not run cloud-init. The drop-in's empty ExecStartPre= reset is required
 # because a drop-in appends.
-COPY ubuntu2404/sshd-keygen.conf /usr/lib/systemd/system/ssh.service.d/10-mashine-keygen.conf
+COPY sshd-keygen.conf /usr/lib/systemd/system/ssh.service.d/10-mashine-keygen.conf
 RUN chmod 0644 /etc/ssh/sshd_config.d/10-mashine.conf \
 	/usr/lib/systemd/system/ssh.service.d/10-mashine-keygen.conf
 
