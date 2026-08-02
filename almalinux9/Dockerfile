@@ -4,7 +4,7 @@
 #
 # AlmaLinux 9. Built from the repository root, which is the build context:
 #
-#     docker build -f almalinux9/Dockerfile -t machine-almalinux:9 .
+#     docker build -f almalinux9/Dockerfile -t mashine-almalinux:9 .
 #
 # Pinned by digest. `almalinux:9` names a different filesystem every few weeks,
 # and a machine image is published under a version that never moves -- so a tag

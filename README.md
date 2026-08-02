@@ -14,7 +14,7 @@ Each directory is one distro. The files at the top are shared by all of them.
 The build context is the repository root:
 
 ```
-docker build -f almalinux9/Dockerfile -t machine-almalinux:9 .
+docker build -f almalinux9/Dockerfile -t mashine-almalinux:9 .
 ```
 
 Nothing outside this repository and the distro's own package mirrors is needed.
