@@ -1,0 +1,77 @@
+name: "Contract"
+
+# The guest half of two agreements that have no other enforcement.
+#
+# A machine is given its keys and its disks through environment variables, and
+# these files are what reads them. Nothing links the two sides at build time or
+# at run time: a rename on either one produces a machine that boots, reports
+# Ready, and quietly refuses every key or leaves every disk unmounted. The
+# sending side is pinned where it lives. This is the receiving side.
+#
+# It is a grep rather than a boot test on purpose -- it answers "did someone
+# change the contract", which is a property of these files, not of an image.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The expansion, not the bare name: a substring check passes against any
+      # name ENDING in MACHINE_SSH_KEYS, including the MIGET_ prefixed one this
+      # used to be, so a half-finished rename would stay green. -F throughout,
+      # because every pattern here is a literal and ${ and . are not.
+      - name: mashine-init installs the keys it is sent
+        run: |
+          grep -qF '"${MACHINE_SSH_KEYS' mashine-init \
+            || { echo 'mashine-init does not expand ${MACHINE_SSH_KEYS}: keys would never be installed'; exit 1; }
+          grep -qF '/root/.ssh/authorized_keys' mashine-init \
+            || { echo 'mashine-init does not write /root/.ssh/authorized_keys'; exit 1; }
+
+      # sshd ignores a group- or world-writable key file, or one under a
+      # directory that is, and says so only in its own log -- the client just
+      # sees "Permission denied (publickey)".
+      - name: mashine-init writes them at modes sshd will read
+        run: |
+          grep -qF 'umask 0077' mashine-init \
+            || { echo 'mashine-init does not umask 0077: authorized_keys must be 0600'; exit 1; }
+          grep -qF 'chmod 0700 /root/.ssh' mashine-init \
+            || { echo 'mashine-init does not chmod 0700 /root/.ssh: sshd would ignore the keys'; exit 1; }
+
+      # The sed anchor, for the same reason as above and with a live example:
+      # this file also reads MIGET_MACHINE_VOLUMES as a fallback, and a bare
+      # MACHINE_VOLUMES= is a substring of it. Without the ^ this check passes
+      # against a file that reads only the old name.
+      - name: mashine-volumes reads the documented name
+        run: |
+          grep -qF 's/^MACHINE_VOLUMES=' mashine-volumes \
+            || { echo 'mashine-volumes does not read MACHINE_VOLUMES: attached disks would never mount'; exit 1; }
+
+      # Three directives, each load-bearing, each easy to relax by accident.
+      # Anchored so a commented-out copy cannot satisfy the check.
+      - name: The sshd policy is root by key and nothing else
+        run: |
+          for d in 'PermitRootLogin prohibit-password' \
+                   'PasswordAuthentication no' \
+                   'KbdInteractiveAuthentication no'; do
+            grep -qxF "$d" sshd-mashine.conf \
+              || { echo "sshd-mashine.conf does not set '$d'"; exit 1; }
+          done
+
+      # A new distro directory that forgets one of these builds and boots. The
+      # machine it produces has no way in, or no disks, and nothing says so.
+      - name: Every image carries the shared files
+        run: |
+          rc=0
+          for d in */; do
+            [ -f "${d}Dockerfile" ] || continue
+            for f in sshd-mashine.conf mashine-init mashine-volumes; do
+              grep -qF "COPY $f " "${d}Dockerfile" \
+                || { echo "${d}Dockerfile does not COPY $f"; rc=1; }
+            done
+          done
+          exit $rc
