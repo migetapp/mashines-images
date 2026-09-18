@@ -29,7 +29,7 @@ COPY mashine-volumes.service /usr/lib/systemd/system/mashine-volumes.service
 RUN chmod 0755 /usr/local/sbin/mashine-volumes \
 	&& systemctl enable mashine-volumes.service
 
-COPY fstrim-mashine.conf /usr/lib/systemd/system/fstrim.timer.d/10-mashine.conf
+COPY fstrim-timer-mashine.conf /usr/lib/systemd/system/fstrim.timer.d/10-mashine.conf
 COPY fstrim-mashine.conf /usr/lib/systemd/system/fstrim.service.d/10-mashine.conf
 RUN chmod 0644 /usr/lib/systemd/system/fstrim.timer.d/10-mashine.conf \
 	/usr/lib/systemd/system/fstrim.service.d/10-mashine.conf \
