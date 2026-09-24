@@ -4,23 +4,19 @@ FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebff
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# openssh-server's postinst runs ssh-keygen -A, so the rm must be in this layer:
-# a published image carries every layer it was built from.
 RUN apt-get update \
 	&& apt-get -y upgrade \
 	&& apt-get -y install --no-install-recommends \
 		systemd \
 		openssh-server \
+		cloud-init lsb-release \
 		iproute2 iputils-ping less nano curl \
-		cloud-init \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& rm -f /etc/ssh/ssh_host_* \
 	&& systemctl disable ssh.socket \
 	&& systemctl enable ssh.service
+
 COPY sshd-mashine.conf /etc/ssh/sshd_config.d/10-mashine.conf
-# Ubuntu has no sshd-keygen@.service; cloud-init does it there, and a machine
-# does not run cloud-init. The drop-in's empty ExecStartPre= reset is required
-# because a drop-in appends.
 COPY sshd-keygen.conf /usr/lib/systemd/system/ssh.service.d/10-mashine-keygen.conf
 RUN chmod 0644 /etc/ssh/sshd_config.d/10-mashine.conf \
 	/usr/lib/systemd/system/ssh.service.d/10-mashine-keygen.conf
@@ -35,18 +31,12 @@ COPY fstrim-mashine.conf /usr/lib/systemd/system/fstrim.service.d/10-mashine.con
 RUN chmod 0644 /usr/lib/systemd/system/fstrim.timer.d/10-mashine.conf \
 	/usr/lib/systemd/system/fstrim.service.d/10-mashine.conf \
 	&& systemctl enable fstrim.timer
+
 COPY mashine-init /usr/local/sbin/mashine-init
+RUN chmod 0755 /usr/local/sbin/mashine-init
 COPY cloud-init-mashine.cfg /etc/cloud/cloud.cfg.d/90-mashine.cfg
 RUN chmod 0644 /etc/cloud/cloud.cfg.d/90-mashine.cfg
-RUN chmod 0755 /usr/local/sbin/mashine-init
 
-# No console, no screen, no hardware of its own -- and no kernel modules: the
-# guest has no /lib/modules, so libkmod cannot even initialise and
-# systemd-modules-load can only fail. It is masked here and not on the
-# RHEL-family images because Debian ships a dangling
-# /etc/modules-load.d/modules.conf, which is enough to satisfy the unit's
-# ConditionDirectoryNotEmpty; on EL that directory is empty and the unit is
-# skipped instead. Without this the machine boots degraded.
 RUN systemctl mask \
 		systemd-firstboot.service \
 		getty.target \

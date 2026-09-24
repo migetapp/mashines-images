@@ -53,9 +53,9 @@ The separators differ on purpose: an SSH key's option list can contain commas.
 **`MACHINE_USER_DATA`**: the machine's user data, **base64**-encoded. `mashine-init`
 writes it to a cloud-init NoCloud seed (`/var/lib/cloud/seed/nocloud`) with the
 machine's hostname as its `instance-id`, so a script or `#cloud-config` runs once
-per machine, not once per boot. Only an image that ships cloud-init acts on it;
-`ubuntu2404` does, with `cloud-init-mashine.cfg` keeping cloud-init away from the
-network, the host keys, root's keys and the hostname. Unset writes no seed, and
+per machine, not once per boot. Every image ships cloud-init, with
+`cloud-init-mashine.cfg` keeping it away from the network, the host keys, root's
+keys and the hostname. Unset writes no seed, and
 cloud-init then finds no datasource and stays disabled.
 
 `MACHINE_SSH_KEYS` can only be read by PID 1. A systemd service is started with

@@ -10,6 +10,7 @@ RUN dnf -y upgrade \
 		procps-ng iproute iputils less tar gzip vim-minimal nano \
 		e2fsprogs \
 		openssh-server \
+		cloud-init \
 	&& dnf clean all \
 	&& rm -rf /var/cache/dnf \
 	&& rm -f /etc/ssh/ssh_host_* \
@@ -24,6 +25,8 @@ RUN chmod 0755 /usr/local/sbin/mashine-volumes \
 
 COPY mashine-init /usr/local/sbin/mashine-init
 RUN chmod 0755 /usr/local/sbin/mashine-init
+COPY cloud-init-mashine.cfg /etc/cloud/cloud.cfg.d/90-mashine.cfg
+RUN chmod 0644 /etc/cloud/cloud.cfg.d/90-mashine.cfg
 
 # Prompts for locale and a root password on a console a machine does not have.
 RUN systemctl mask systemd-firstboot.service

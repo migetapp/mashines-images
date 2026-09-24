@@ -12,6 +12,7 @@ RUN dnf -y upgrade \
 		procps-ng iproute iputils less nano \
 		e2fsprogs \
 		openssh-server \
+		cloud-init \
 	&& dnf clean all \
 	&& rm -rf /var/cache/libdnf5 \
 	&& rm -f /etc/ssh/ssh_host_* \
@@ -26,6 +27,10 @@ RUN chmod 0755 /usr/local/sbin/mashine-volumes \
 
 COPY mashine-init /usr/local/sbin/mashine-init
 RUN chmod 0755 /usr/local/sbin/mashine-init
+COPY cloud-init-mashine.cfg /etc/cloud/cloud.cfg.d/90-mashine.cfg
+RUN chmod 0644 /etc/cloud/cloud.cfg.d/90-mashine.cfg \
+	&& systemctl enable cloud-init-local.service cloud-init-main.service \
+		cloud-init-network.service cloud-config.service cloud-final.service
 
 # No console, no screen, no hardware of its own. Nothing was pre-masked because
 # nothing installed systemd until we did, and a fresh systemd defaults to

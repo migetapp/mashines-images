@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Miget
 # SPDX-License-Identifier: MIT
-FROM quay.io/centos/centos:stream10@sha256:32916e884cc02e70fc57a4b7c8f6a5e0e4b168e7df49fd0a350e56867d88aa80
+FROM quay.io/centos/centos:stream10@sha256:fd6b1e14d330489aac4624aeb6269428163b6fd557cfb572fd1098c73109e84b
 
 # No host keys baked, ever: every machine is a copy of this filesystem.
 # Shorter list than AlmaLinux's -- this base already has curl (the full one),
@@ -10,6 +10,7 @@ RUN dnf -y upgrade \
 		procps-ng iproute iputils less nano \
 		e2fsprogs \
 		openssh-server \
+		cloud-init \
 	&& dnf clean all \
 	&& rm -rf /var/cache/dnf \
 	&& rm -f /etc/ssh/ssh_host_* \
@@ -24,6 +25,8 @@ RUN chmod 0755 /usr/local/sbin/mashine-volumes \
 
 COPY mashine-init /usr/local/sbin/mashine-init
 RUN chmod 0755 /usr/local/sbin/mashine-init
+COPY cloud-init-mashine.cfg /etc/cloud/cloud.cfg.d/90-mashine.cfg
+RUN chmod 0644 /etc/cloud/cloud.cfg.d/90-mashine.cfg
 
 # This base ships systemd, the console and kernel-filesystem masks and a
 # multi-user default already, like almalinux:9 -- Rocky's EL10 base ships none

@@ -76,7 +76,7 @@ jobs:
           rc=0
           for d in */; do
             [ -f "${d}Dockerfile" ] || continue
-            for f in sshd-mashine.conf mashine-init mashine-volumes; do
+            for f in sshd-mashine.conf mashine-init mashine-volumes cloud-init-mashine.cfg; do
               grep -qF "COPY $f " "${d}Dockerfile" \
                 || { echo "${d}Dockerfile does not COPY $f"; rc=1; }
             done

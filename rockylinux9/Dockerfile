@@ -14,6 +14,7 @@ RUN dnf -y upgrade \
 		procps-ng iproute nano \
 		e2fsprogs \
 		openssh-server \
+		cloud-init \
 	&& dnf clean all \
 	&& rm -rf /var/cache/dnf \
 	&& rm -f /etc/ssh/ssh_host_* \
@@ -28,6 +29,8 @@ RUN chmod 0755 /usr/local/sbin/mashine-volumes \
 
 COPY mashine-init /usr/local/sbin/mashine-init
 RUN chmod 0755 /usr/local/sbin/mashine-init
+COPY cloud-init-mashine.cfg /etc/cloud/cloud.cfg.d/90-mashine.cfg
+RUN chmod 0644 /etc/cloud/cloud.cfg.d/90-mashine.cfg
 
 # No console, no screen, no hardware of its own. Nothing was pre-masked because
 # nothing installed systemd until we did, and a fresh systemd defaults to

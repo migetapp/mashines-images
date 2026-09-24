@@ -13,6 +13,7 @@ RUN apt-get update \
 	&& apt-get -y install --no-install-recommends \
 		systemd \
 		openssh-server \
+		cloud-init lsb-release \
 		iproute2 iputils-ping less nano curl \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& rm -f /etc/ssh/ssh_host_* \
@@ -32,6 +33,8 @@ RUN chmod 0755 /usr/local/sbin/mashine-volumes \
 
 COPY mashine-init /usr/local/sbin/mashine-init
 RUN chmod 0755 /usr/local/sbin/mashine-init
+COPY cloud-init-mashine.cfg /etc/cloud/cloud.cfg.d/90-mashine.cfg
+RUN chmod 0644 /etc/cloud/cloud.cfg.d/90-mashine.cfg
 
 # No console, no screen, no hardware of its own -- and no kernel modules: the
 # guest has no /lib/modules, so libkmod cannot even initialise and
