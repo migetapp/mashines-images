@@ -12,6 +12,7 @@ RUN apt-get update \
 		systemd \
 		openssh-server \
 		iproute2 iputils-ping less nano curl \
+		cloud-init \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& rm -f /etc/ssh/ssh_host_* \
 	&& systemctl disable ssh.socket \
@@ -35,6 +36,8 @@ RUN chmod 0644 /usr/lib/systemd/system/fstrim.timer.d/10-mashine.conf \
 	/usr/lib/systemd/system/fstrim.service.d/10-mashine.conf \
 	&& systemctl enable fstrim.timer
 COPY mashine-init /usr/local/sbin/mashine-init
+COPY cloud-init-mashine.cfg /etc/cloud/cloud.cfg.d/90-mashine.cfg
+RUN chmod 0644 /etc/cloud/cloud.cfg.d/90-mashine.cfg
 RUN chmod 0755 /usr/local/sbin/mashine-init
 
 # No console, no screen, no hardware of its own -- and no kernel modules: the

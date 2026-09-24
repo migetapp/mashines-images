@@ -44,6 +44,18 @@ if [ -n "${MACHINE_SSH_KEYS:-}" ]; then
 	) || echo "mashine-init: failed to install ssh authorized keys" >&2
 fi
 
+if [ -n "${MACHINE_USER_DATA:-}" ]; then
+	(
+		umask 0077
+		seed=/var/lib/cloud/seed/nocloud
+		mkdir -p "${seed}" &&
+			printf '%s' "${MACHINE_USER_DATA}" | base64 -d >"${seed}/user-data.new" &&
+			printf 'instance-id: %s\n' "$(cat /proc/sys/kernel/hostname)" >"${seed}/meta-data.new" &&
+			mv "${seed}/user-data.new" "${seed}/user-data" &&
+			mv "${seed}/meta-data.new" "${seed}/meta-data"
+	) || echo "mashine-init: failed to seed user-data" >&2
+fi
+
 # `journalctl --follow` started before journald has a journal file watches
 # nothing and never recovers -- not "starts late", never. So wait for the file.
 #

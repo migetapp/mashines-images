@@ -35,6 +35,13 @@ jobs:
       # sshd ignores a group- or world-writable key file, or one under a
       # directory that is, and says so only in its own log -- the client just
       # sees "Permission denied (publickey)".
+      - name: mashine-init seeds the user data it is sent
+        run: |
+          grep -qF '"${MACHINE_USER_DATA' mashine-init \
+            || { echo 'mashine-init does not expand ${MACHINE_USER_DATA}: user data would never run'; exit 1; }
+          grep -qF '/var/lib/cloud/seed/nocloud' mashine-init \
+            || { echo 'mashine-init does not write the NoCloud seed'; exit 1; }
+
       - name: mashine-init writes them at modes sshd will read
         run: |
           grep -qF 'umask 0077' mashine-init \
