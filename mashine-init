@@ -44,13 +44,24 @@ if [ -n "${MACHINE_SSH_KEYS:-}" ]; then
 	) || echo "mashine-init: failed to install ssh authorized keys" >&2
 fi
 
+machine_id="${MACHINE_ID:-$(cat /proc/sys/kernel/hostname)}"
+
+owner=/etc/ssh/.mashine-machine-id
+if [ -f "${owner}" ] && [ "$(cat "${owner}")" != "${machine_id}" ]; then
+	rm -f /etc/ssh/ssh_host_*
+fi
+if [ -d /etc/ssh ]; then
+	printf '%s\n' "${machine_id}" >"${owner}.new" && mv "${owner}.new" "${owner}" ||
+		echo "mashine-init: failed to record the host key owner" >&2
+fi
+
 if [ -n "${MACHINE_USER_DATA:-}" ]; then
 	(
 		umask 0077
 		seed=/var/lib/cloud/seed/nocloud
 		mkdir -p "${seed}" &&
 			printf '%s' "${MACHINE_USER_DATA}" | base64 -d >"${seed}/user-data.new" &&
-			printf 'instance-id: %s\n' "$(cat /proc/sys/kernel/hostname)" >"${seed}/meta-data.new" &&
+			printf 'instance-id: %s\n' "${machine_id}" >"${seed}/meta-data.new" &&
 			mv "${seed}/user-data.new" "${seed}/user-data" &&
 			mv "${seed}/meta-data.new" "${seed}/meta-data"
 	) || echo "mashine-init: failed to seed user-data" >&2

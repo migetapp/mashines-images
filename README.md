@@ -52,11 +52,16 @@ The separators differ on purpose: an SSH key's option list can contain commas.
 
 **`MACHINE_USER_DATA`**: the machine's user data, **base64**-encoded. `mashine-init`
 writes it to a cloud-init NoCloud seed (`/var/lib/cloud/seed/nocloud`) with the
-machine's hostname as its `instance-id`, so a script or `#cloud-config` runs once
-per machine, not once per boot. Every image ships cloud-init, with
+machine's id as its `instance-id`, so a script or `#cloud-config` runs once per
+machine, not once per boot. Every image ships cloud-init, with
 `cloud-init-mashine.cfg` keeping it away from the network, the host keys, root's
 keys and the hostname. Unset writes no seed, and
 cloud-init then finds no datasource and stays disabled.
+
+**`MACHINE_ID`**: the machine's stable id. It stays the same across restarts and
+live migrations, where the hostname (the pod name) does not, and differs between
+a machine and its clone. `mashine-init` uses it as the cloud-init `instance-id`
+and as the owner of the SSH host keys. Unset falls back to the hostname.
 
 `MACHINE_SSH_KEYS` can only be read by PID 1. A systemd service is started with
 a clean environment rather than the one the guest was given, and the
@@ -88,6 +93,11 @@ it is worth knowing which one you are adding:
   by the time a machine boots.
 
 Check a new image with `ls /etc/ssh/ssh_host_*`, and check the layers too.
+
+A clone starts from a copy of another machine's filesystem, host keys included.
+`mashine-init` records which machine the keys belong to in
+`/etc/ssh/.mashine-machine-id` and deletes them when a different machine boots
+from that disk, so the distro's own first-start generation above makes new ones.
 
 ## What the bases disagree about
 

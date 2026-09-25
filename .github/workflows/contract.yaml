@@ -42,6 +42,13 @@ jobs:
           grep -qF '/var/lib/cloud/seed/nocloud' mashine-init \
             || { echo 'mashine-init does not write the NoCloud seed'; exit 1; }
 
+      - name: mashine-init knows which machine it is
+        run: |
+          grep -qF '"${MACHINE_ID' mashine-init \
+            || { echo 'mashine-init does not expand ${MACHINE_ID}: clones would keep their source host keys'; exit 1; }
+          grep -qF 'rm -f /etc/ssh/ssh_host_' mashine-init \
+            || { echo 'mashine-init never replaces host keys that belong to another machine'; exit 1; }
+
       - name: mashine-init writes them at modes sshd will read
         run: |
           grep -qF 'umask 0077' mashine-init \
