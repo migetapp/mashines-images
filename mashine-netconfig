@@ -1,0 +1,60 @@
+#!/bin/sh
+set -u
+
+imds=http://169.254.169.254
+token=$(curl -sf -m 3 -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 300" "${imds}/latest/api/token") || exit 0
+
+get() {
+	curl -sf -m 3 -H "X-aws-ec2-metadata-token: ${token}" "${imds}/latest/meta-data/picovm/$1"
+}
+
+nameservers=$(get nameservers) || exit 0
+search=$(get search) || search=""
+ntp=$(get ntp-servers) || ntp=""
+
+resolv=$(
+	if [ -n "${search}" ]; then
+		printf 'search %s\n' "$(echo ${search})"
+	fi
+	for server in ${nameservers}; do
+		printf 'nameserver %s\n' "${server}"
+	done
+)
+if [ "$(cat /etc/resolv.conf 2>/dev/null)" != "${resolv}" ]; then
+	printf '%s\n' "${resolv}" >/etc/resolv.conf || echo "mashine-netconfig: failed to write /etc/resolv.conf" >&2
+fi
+
+servers=$(echo ${ntp:-169.254.169.123})
+
+write_if_changed() {
+	target=$1
+	content=$2
+	if [ "$(cat "${target}" 2>/dev/null)" = "${content}" ]; then
+		return 1
+	fi
+	mkdir -p "$(dirname "${target}")" && printf '%s\n' "${content}" >"${target}.new" && mv "${target}.new" "${target}"
+}
+
+if [ -x /usr/lib/systemd/systemd-timesyncd ] || [ -x /lib/systemd/systemd-timesyncd ]; then
+	if write_if_changed /etc/systemd/timesyncd.conf.d/10-mashine.conf "$(printf '[Time]\nNTP=%s' "${servers}")"; then
+		systemctl try-restart systemd-timesyncd.service 2>/dev/null
+	fi
+fi
+
+if command -v chronyc >/dev/null 2>&1; then
+	sources=""
+	for server in ${servers}; do
+		sources="${sources}server ${server} iburst
+"
+	done
+	if [ -d /etc/chrony/sources.d ]; then
+		dir=/etc/chrony/sources.d
+	else
+		dir=/run/chrony-dhcp
+	fi
+	if write_if_changed "${dir}/mashine.sources" "$(printf '%s' "${sources}")"; then
+		chronyc reload sources >/dev/null 2>&1
+	fi
+fi
+
+exit 0

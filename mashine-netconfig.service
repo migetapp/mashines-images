@@ -1,0 +1,7 @@
+[Unit]
+Description=Apply mashines.dev DNS and time settings from instance metadata
+Documentation=https://github.com/migetapp/mashines-images
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mashine-netconfig

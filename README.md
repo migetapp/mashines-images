@@ -50,6 +50,15 @@ mount nothing.
 
 The separators differ on purpose: an SSH key's option list can contain commas.
 
+**DNS and time settings** are not passed as variables. `mashine-netconfig` runs at
+boot and every five minutes, the way a DHCP lease is renewed, and reads them
+from instance metadata: `picovm/nameservers`, `picovm/search` and
+`picovm/ntp-servers` under `/latest/meta-data/`, one value per line. It rewrites
+`/etc/resolv.conf` when they differ, and an empty `nameservers` means the machine
+gets no resolver. The time servers, or `169.254.169.123` when none are set, are
+written for systemd-timesyncd or chrony if the image has one. A path that
+answers 404 is left alone, so the guest keeps what it booted with.
+
 **`MACHINE_USER_DATA`**: the machine's user data, **base64**-encoded. `mashine-init`
 writes it to a cloud-init NoCloud seed (`/var/lib/cloud/seed/nocloud`) with the
 machine's id as its `instance-id`, so a script or `#cloud-config` runs once per

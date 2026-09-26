@@ -1,0 +1,9 @@
+[Unit]
+Description=Refresh mashines.dev DNS and time settings
+
+[Timer]
+OnBootSec=2s
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
