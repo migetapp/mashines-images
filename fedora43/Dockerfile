@@ -22,6 +22,7 @@ RUN chmod 0644 /etc/ssh/sshd_config.d/10-mashine.conf
 
 COPY mashine-volumes /usr/local/sbin/mashine-volumes
 COPY mashine-volumes.service /usr/lib/systemd/system/mashine-volumes.service
+COPY 90-mashine-hotplug.rules /usr/lib/udev/rules.d/90-mashine-hotplug.rules
 RUN chmod 0755 /usr/local/sbin/mashine-volumes \
 	&& systemctl enable mashine-volumes.service
 

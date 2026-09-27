@@ -59,6 +59,13 @@ gets no resolver. The time servers, or `169.254.169.123` when none are set, are
 written for systemd-timesyncd or chrony if the image has one. A path that
 answers 404 is left alone, so the guest keeps what it booted with.
 
+**Hot-plugged disks** (EC2 volumes attached to a running machine) arrive as
+virtio disks whose serial is the volume id without its dash, so they show up as
+`/dev/disk/by-id/virtio-vol<id>`. The machine's `/dev` is a tmpfs, not devtmpfs,
+so `90-mashine-hotplug.rules` creates the `/dev/vd*` node when a disk is added
+and removes it when it goes. An image without the rule sees the disk in
+`/sys/block` but cannot open it.
+
 **`MACHINE_USER_DATA`**: the machine's user data, **base64**-encoded. `mashine-init`
 writes it to a cloud-init NoCloud seed (`/var/lib/cloud/seed/nocloud`) with the
 machine's id as its `instance-id`, so a script or `#cloud-config` runs once per

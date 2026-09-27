@@ -1,0 +1,2 @@
+ACTION=="add", SUBSYSTEM=="block", KERNEL=="vd*", RUN+="/bin/sh -c 'test -e /dev/$kernel || mknod -m 0660 /dev/$kernel b $major $minor; chgrp disk /dev/$kernel 2>/dev/null || true'"
+ACTION=="remove", SUBSYSTEM=="block", KERNEL=="vd*", RUN+="/bin/sh -c 'test -b /dev/$kernel && rm -f /dev/$kernel || true'"
